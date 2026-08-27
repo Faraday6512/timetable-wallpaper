@@ -57,7 +57,8 @@ body {
 
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }
-  .preview { order: -1; position: static; top: auto; }
+  /* .layout .preview beats the later `.preview { position: sticky }` rule regardless of source order */
+  .layout .preview { order: -1; position: static; top: auto; }
 }
 
 .panel {
