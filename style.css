@@ -57,7 +57,7 @@ body {
 
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }
-  .preview { order: -1; }
+  .preview { order: -1; position: static; top: auto; }
 }
 
 .panel {
