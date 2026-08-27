@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Table Wallpaper</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <h1>📱 Time Table Wallpaper</h1>
+    <p>Add your classes and get a phone wallpaper image. Everything is saved only on this device.</p>
+  </header>
+
+  <main class="layout">
+    <section class="panel controls">
+
+      <div class="field-group">
+        <label class="field-label">Search classes</label>
+        <p id="catalogStatus" class="hint"></p>
+        <input type="text" id="catalogSearch" placeholder="Search by course code or title (e.g. CS-280 or Data Structures)">
+        <div id="catalogResults" class="catalog-results"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Days shown</label>
+        <div id="dayToggles" class="chip-row"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Class list (add manually or via search above)</label>
+        <div id="courseList" class="course-list"></div>
+        <button id="addCourseBtn" class="btn secondary add-course-btn">+ Add Class</button>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Also show on wallpaper</label>
+        <div class="checkbox-row">
+          <label class="checkbox-item"><input type="checkbox" id="showTitle"> Course title</label>
+          <label class="checkbox-item"><input type="checkbox" id="showRoom"> Room</label>
+          <label class="checkbox-item"><input type="checkbox" id="showProfessor"> Professor</label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Theme</label>
+        <div id="themeToggles" class="chip-row"></div>
+        <div id="customThemeColors" class="custom-theme-colors">
+          <label class="color-field"><span>Background top</span><input type="color" id="customBg1"></label>
+          <label class="color-field"><span>Background bottom</span><input type="color" id="customBg2"></label>
+          <label class="color-field"><span>Day labels</span><input type="color" id="customHeader"></label>
+          <label class="color-field"><span>Detail text</span><input type="color" id="customMuted"></label>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Resolution</label>
+        <select id="resolutionSelect">
+          <optgroup label="iPhone">
+            <option value="1179x2556">iPhone 15 / 16 (1179×2556)</option>
+            <option value="1290x2796">iPhone 15 / 16 Plus (1290×2796)</option>
+            <option value="1206x2622">iPhone 16 Pro / 17 (1206×2622)</option>
+            <option value="1320x2868">iPhone 16 Pro Max / 17 Pro Max (1320×2868)</option>
+          </optgroup>
+          <optgroup label="iPad">
+            <option value="1488x2266">iPad mini (1488×2266)</option>
+            <option value="1640x2360">iPad / iPad Air 11" (1640×2360)</option>
+            <option value="1668x2420">iPad Pro 11" (1668×2420)</option>
+            <option value="2048x2732">iPad Air 13" (2048×2732)</option>
+            <option value="2064x2752">iPad Pro 13" (2064×2752)</option>
+          </optgroup>
+          <optgroup label="Galaxy Phone">
+            <option value="1080x2400">Galaxy S21 (1080×2400)</option>
+            <option value="1080x2400">Galaxy S21+ (1080×2400)</option>
+            <option value="1440x3200">Galaxy S21 Ultra (1440×3200)</option>
+            <option value="1080x2340">Galaxy S22 (1080×2340)</option>
+            <option value="1080x2340">Galaxy S22+ (1080×2340)</option>
+            <option value="1440x3088">Galaxy S22 Ultra (1440×3088)</option>
+            <option value="1080x2340">Galaxy S23 (1080×2340)</option>
+            <option value="1080x2340">Galaxy S23+ (1080×2340)</option>
+            <option value="1440x3088">Galaxy S23 Ultra (1440×3088)</option>
+            <option value="1080x2340">Galaxy S24 (1080×2340)</option>
+            <option value="1080x2340">Galaxy S24+ (1080×2340)</option>
+            <option value="1440x3120">Galaxy S24 Ultra (1440×3120)</option>
+            <option value="1080x2340">Galaxy S25 (1080×2340)</option>
+            <option value="1080x2340">Galaxy S25+ (1080×2340)</option>
+            <option value="1440x3120">Galaxy S25 Ultra (1440×3120)</option>
+            <option value="1080x2340" selected>Galaxy S26 (1080×2340)</option>
+            <option value="1440x3120">Galaxy S26+ (1440×3120)</option>
+            <option value="1440x3120">Galaxy S26 Ultra (1440×3120)</option>
+          </optgroup>
+          <optgroup label="Galaxy Z Fold">
+            <option value="904x2316">Z Fold5 Cover (904×2316)</option>
+            <option value="1812x2176">Z Fold5 Main (1812×2176)</option>
+            <option value="968x2376">Z Fold6 Cover (968×2376)</option>
+            <option value="1856x2160">Z Fold6 Main (1856×2160)</option>
+            <option value="1080x2520">Z Fold7 Cover (1080×2520)</option>
+            <option value="1968x2184">Z Fold7 Main (1968×2184)</option>
+            <option value="1248x1972">Z Fold8 Cover (1248×1972)</option>
+            <option value="1848x2448">Z Fold8 Main (1848×2448)</option>
+            <option value="1080x2520">Z Fold8 Ultra Cover (1080×2520)</option>
+            <option value="2256x2504">Z Fold8 Ultra Main (2256×2504)</option>
+          </optgroup>
+          <optgroup label="Galaxy Tab">
+            <option value="1600x2560">Galaxy Tab S 11" (1600×2560)</option>
+            <option value="1752x2800">Galaxy Tab S+ 12.4" (1752×2800)</option>
+            <option value="1848x2960">Galaxy Tab S Ultra 14.6" (1848×2960)</option>
+          </optgroup>
+          <optgroup label="Computer">
+            <option value="1920x1080">Full HD (1920×1080)</option>
+            <option value="2560x1440">2K / QHD (2560×1440)</option>
+            <option value="3840x2160">4K UHD (3840×2160)</option>
+            <option value="3024x1964">MacBook Pro 14" (3024×1964)</option>
+            <option value="3456x2234">MacBook Pro 16" (3456×2234)</option>
+          </optgroup>
+          <option value="custom">Custom</option>
+        </select>
+        <div id="customResolution" class="custom-res hidden">
+          <input type="number" id="customWidth" placeholder="Width" min="300" max="4000">
+          <span>×</span>
+          <input type="number" id="customHeight" placeholder="Height" min="300" max="4000">
+        </div>
+      </div>
+
+      <div class="field-group inline checkbox-field">
+        <input type="checkbox" id="lockScreenMargin" checked>
+        <label for="lockScreenMargin">Leave space at top for lock-screen clock</label>
+      </div>
+
+      <div class="button-row">
+        <button id="resetBtn" class="btn secondary">Reset</button>
+        <button id="downloadBtn" class="btn primary">Download Image</button>
+      </div>
+    </section>
+
+    <section class="panel preview">
+      <label class="field-label">Preview</label>
+      <div class="canvas-frame">
+        <canvas id="previewCanvas"></canvas>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="catalog-data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
