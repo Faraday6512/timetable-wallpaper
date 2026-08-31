@@ -26,6 +26,24 @@
       <div class="field-group">
         <label class="field-label">Days shown</label>
         <div id="dayToggles" class="chip-row"></div>
+        <p id="dayToggleHint" class="hint hidden"></p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Time zone</label>
+        <label class="checkbox-item"><input type="checkbox" id="tzEnabled"> Show class times in a different time zone</label>
+        <div id="tzOptions" class="tz-options hidden">
+          <p class="hint">Studying abroad? Enter class times as your school lists them, then pick your home time zone to see the wallpaper in your own local time. Hour labels switch to AM/PM while this is on.</p>
+          <div class="tz-grid">
+            <label class="tz-field"><span>School time zone</span>
+              <select id="schoolTz"></select>
+            </label>
+            <label class="tz-field"><span>Show times in</span>
+              <select id="homeTz"></select>
+            </label>
+          </div>
+          <p id="tzInfo" class="hint"></p>
+        </div>
       </div>
 
       <div class="field-group">

@@ -306,6 +306,29 @@ select { width: 100%; }
   width: 100%;
 }
 
+.tz-options { margin-top: 10px; }
+
+.tz-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .tz-grid { grid-template-columns: 1fr; }
+}
+
+.tz-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tz-field select { width: 100%; }
+
 .custom-res {
   display: flex;
   align-items: center;

@@ -298,6 +298,17 @@ const THEMES = [
     header: '#ffffff',
   },
   {
+    id: 'indigo',
+    name: 'Indigo',
+    bg: ['#e7e9ff', '#c6ccf6'],
+    card: 'rgba(255,255,255,0.82)',
+    cardBorder: 'rgba(40,40,110,0.09)',
+    blockBg: 'rgba(255,255,255,0.9)',
+    text: '#2e2e78',
+    muted: '#6f72b3',
+    header: '#2e2e78',
+  },
+  {
     id: 'olive',
     name: 'Olive',
     bg: ['#eef0d8', '#dfe3b0'],
@@ -403,6 +414,9 @@ function defaultState() {
     showProfessor: false,
     theme: 'minimal',
     themeOverrides: {},
+    tzEnabled: false,
+    schoolTz: deviceTimeZone(),
+    homeTz: deviceTimeZone(),
     resolution: '1080x2340',
     customWidth: 1080,
     customHeight: 2400,
@@ -431,6 +445,130 @@ function saveState() {
 function parseTime(str) {
   const [h, m] = str.split(':').map(Number);
   return h * 60 + m;
+}
+
+// ---------- Time zone helpers ----------
+
+const MIN_PER_DAY = 24 * 60;
+
+// Timezones used when the browser can't enumerate the full IANA list.
+const FALLBACK_TIME_ZONES = [
+  'Pacific/Honolulu', 'America/Anchorage', 'America/Los_Angeles', 'America/Denver',
+  'America/Chicago', 'America/New_York', 'America/Toronto', 'America/Mexico_City',
+  'America/Bogota', 'America/Sao_Paulo', 'Atlantic/Reykjavik', 'Europe/London',
+  'Europe/Lisbon', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid', 'Europe/Rome',
+  'Europe/Athens', 'Europe/Istanbul', 'Europe/Moscow', 'Africa/Cairo',
+  'Africa/Lagos', 'Africa/Johannesburg', 'Asia/Jerusalem', 'Asia/Dubai',
+  'Asia/Tehran', 'Asia/Karachi', 'Asia/Kolkata', 'Asia/Kathmandu', 'Asia/Dhaka',
+  'Asia/Bangkok', 'Asia/Jakarta', 'Asia/Shanghai', 'Asia/Hong_Kong',
+  'Asia/Singapore', 'Asia/Taipei', 'Asia/Manila', 'Asia/Seoul', 'Asia/Tokyo',
+  'Australia/Perth', 'Australia/Adelaide', 'Australia/Sydney', 'Australia/Brisbane',
+  'Pacific/Guam', 'Pacific/Auckland', 'UTC',
+];
+
+function deviceTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch (e) {
+    return 'UTC';
+  }
+}
+
+function listTimeZones() {
+  try {
+    if (typeof Intl.supportedValuesOf === 'function') {
+      const zones = Intl.supportedValuesOf('timeZone');
+      if (zones && zones.length) return zones.slice();
+    }
+  } catch (e) {
+    /* fall through */
+  }
+  return FALLBACK_TIME_ZONES.slice();
+}
+
+// Minutes that `timeZone` is ahead of UTC at the given date (handles DST).
+function zoneOffsetMinutes(timeZone, date) {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    const parts = {};
+    for (const p of dtf.formatToParts(date)) parts[p.type] = p.value;
+    const asUTC = Date.UTC(
+      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+      Number(parts.hour), Number(parts.minute), Number(parts.second),
+    );
+    return Math.round((asUTC - date.getTime()) / 60000);
+  } catch (e) {
+    return 0;
+  }
+}
+
+function formatGmtOffset(mins) {
+  const sign = mins < 0 ? '-' : '+';
+  const abs = Math.abs(mins);
+  const hh = Math.floor(abs / 60);
+  const mm = abs % 60;
+  return mm ? `GMT${sign}${hh}:${String(mm).padStart(2, '0')}` : `GMT${sign}${hh}`;
+}
+
+function timeZoneLabel(tz, date) {
+  return `${tz.replace(/_/g, ' ')} (${formatGmtOffset(zoneOffsetMinutes(tz, date))})`;
+}
+
+let timeZoneOptionCache = null;
+
+function timeZoneOptions() {
+  if (timeZoneOptionCache) return timeZoneOptionCache;
+  const now = new Date();
+  timeZoneOptionCache = listTimeZones()
+    .map((tz) => ({ tz, offset: zoneOffsetMinutes(tz, now), label: timeZoneLabel(tz, now) }))
+    .sort((a, b) => a.offset - b.offset || a.tz.localeCompare(b.tz));
+  return timeZoneOptionCache;
+}
+
+function populateTimeZoneSelect(selectEl, selected) {
+  const options = timeZoneOptions().slice();
+  if (!options.some((o) => o.tz === selected)) {
+    options.unshift({ tz: selected, label: timeZoneLabel(selected, new Date()) });
+  }
+  selectEl.innerHTML = '';
+  options.forEach(({ tz, label }) => {
+    const opt = document.createElement('option');
+    opt.value = tz;
+    opt.textContent = label;
+    if (tz === selected) opt.selected = true;
+    selectEl.appendChild(opt);
+  });
+}
+
+// Minutes to add to every school-local class time to get home-local time.
+function getTimeZoneShift() {
+  if (!state.tzEnabled) return 0;
+  if (!state.schoolTz || !state.homeTz || state.schoolTz === state.homeTz) return 0;
+  const now = new Date();
+  return zoneOffsetMinutes(state.homeTz, now) - zoneOffsetMinutes(state.schoolTz, now);
+}
+
+function wrapDayIndex(idx) {
+  return ((idx % 7) + 7) % 7;
+}
+
+function minutesToHHMM(mins) {
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins - h * 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function describeShift(mins) {
+  const sign = mins > 0 ? '+' : '−';
+  const abs = Math.abs(mins);
+  const hh = Math.floor(abs / 60);
+  const mm = abs % 60;
+  return mm ? `${sign}${hh}h ${mm}m` : `${sign}${hh}h`;
 }
 
 // ---------- Catalog search helpers ----------
@@ -492,6 +630,12 @@ const catalogSearchEl = document.getElementById('catalogSearch');
 const catalogResultsEl = document.getElementById('catalogResults');
 
 const dayTogglesEl = document.getElementById('dayToggles');
+const dayToggleHintEl = document.getElementById('dayToggleHint');
+const tzEnabledEl = document.getElementById('tzEnabled');
+const tzOptionsEl = document.getElementById('tzOptions');
+const schoolTzEl = document.getElementById('schoolTz');
+const homeTzEl = document.getElementById('homeTz');
+const tzInfoEl = document.getElementById('tzInfo');
 const themeTogglesEl = document.getElementById('themeToggles');
 const customBg1El = document.getElementById('customBg1');
 const customBg2El = document.getElementById('customBg2');
@@ -765,6 +909,25 @@ showProfessorEl.addEventListener('change', () => {
   onStateChanged();
 });
 
+tzEnabledEl.addEventListener('change', () => {
+  state.tzEnabled = tzEnabledEl.checked;
+  tzOptionsEl.classList.toggle('hidden', !state.tzEnabled);
+  updateTzInfo();
+  onStateChanged();
+});
+
+schoolTzEl.addEventListener('change', () => {
+  state.schoolTz = schoolTzEl.value;
+  updateTzInfo();
+  onStateChanged();
+});
+
+homeTzEl.addEventListener('change', () => {
+  state.homeTz = homeTzEl.value;
+  updateTzInfo();
+  onStateChanged();
+});
+
 resolutionSelectEl.addEventListener('change', () => {
   state.resolution = resolutionSelectEl.value;
   customResEl.classList.toggle('hidden', state.resolution !== 'custom');
@@ -820,6 +983,11 @@ function initControlsFromState() {
   showTitleEl.checked = state.showTitle;
   showRoomEl.checked = state.showRoom;
   showProfessorEl.checked = state.showProfessor;
+  tzEnabledEl.checked = state.tzEnabled;
+  tzOptionsEl.classList.toggle('hidden', !state.tzEnabled);
+  populateTimeZoneSelect(schoolTzEl, state.schoolTz);
+  populateTimeZoneSelect(homeTzEl, state.homeTz);
+  updateTzInfo();
   renderDayToggles();
   renderThemeToggles();
   updateCustomColorInputs();
@@ -870,10 +1038,121 @@ function truncateToWidth(c, text, maxWidth) {
   return lo > 0 ? text.slice(0, lo) + '…' : '';
 }
 
-function getAxisRange() {
+// Build the courses/days that actually get drawn. Source data (state.courses,
+// state.days) always stays in school-local time; when a different home time zone
+// is picked we shift a copy of every class into that zone here, rolling classes
+// onto another weekday and splitting them at midnight when the offset pushes them
+// across a day boundary.
+function getRenderModel() {
+  const shift = getTimeZoneShift();
+  if (!shift) {
+    return { shift: 0, days: state.days.slice(), courses: state.courses.slice() };
+  }
+
+  const courses = [];
+  state.courses.forEach((course) => {
+    const dayIdx = ALL_DAYS.indexOf(course.day);
+    if (dayIdx < 0 || !course.start || !course.end) {
+      courses.push(Object.assign({}, course));
+      return;
+    }
+    const s = parseTime(course.start) + shift;
+    const e = parseTime(course.end) + shift;
+    if (e <= s) return;
+
+    const startDayOffset = Math.floor(s / MIN_PER_DAY);
+    const endDayOffset = Math.floor((e - 1) / MIN_PER_DAY);
+    const base = {
+      name: course.name,
+      title: course.title,
+      location: course.location,
+      professor: course.professor,
+    };
+
+    if (startDayOffset === endDayOffset) {
+      courses.push(Object.assign({}, base, {
+        id: course.id,
+        day: ALL_DAYS[wrapDayIndex(dayIdx + startDayOffset)],
+        start: minutesToHHMM(s - startDayOffset * MIN_PER_DAY),
+        end: minutesToHHMM(e - startDayOffset * MIN_PER_DAY),
+      }));
+    } else {
+      courses.push(Object.assign({}, base, {
+        id: String(course.id) + '-a',
+        day: ALL_DAYS[wrapDayIndex(dayIdx + startDayOffset)],
+        start: minutesToHHMM(s - startDayOffset * MIN_PER_DAY),
+        end: '24:00',
+      }));
+      courses.push(Object.assign({}, base, {
+        id: String(course.id) + '-b',
+        day: ALL_DAYS[wrapDayIndex(dayIdx + endDayOffset)],
+        start: '00:00',
+        end: minutesToHHMM(e - endDayOffset * MIN_PER_DAY),
+      }));
+    }
+  });
+
+  let days = ALL_DAYS.filter((d) => courses.some((c) => c.day === d && c.name && c.start && c.end));
+  if (days.length === 0) return { shift, days: state.days.slice(), courses };
+  return { shift, days: orderDaysForDisplay(days), courses };
+}
+
+// Rotate a set of weekdays so the week starts right after its largest empty
+// stretch. After a time-zone shift the classes can wrap past Sunday, and this
+// keeps the columns in a natural reading order (e.g. Fri, Sun, Mon instead of
+// Mon, Fri, Sun) rather than always forcing Monday first.
+function orderDaysForDisplay(dayList) {
+  const idxs = dayList
+    .map((d) => ALL_DAYS.indexOf(d))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b);
+  if (idxs.length <= 1) return idxs.map((i) => ALL_DAYS[i]);
+
+  let bestStart = 0;
+  let bestGap = -1;
+  for (let k = 0; k < idxs.length; k++) {
+    const gap = ((idxs[(k + 1) % idxs.length] - idxs[k] - 1) + 7) % 7;
+    // >= so that on a tie we prefer the later gap, which keeps the week start
+    // as close to Monday as the class spread allows.
+    if (gap >= bestGap) {
+      bestGap = gap;
+      bestStart = (k + 1) % idxs.length;
+    }
+  }
+  const ordered = [];
+  for (let k = 0; k < idxs.length; k++) {
+    ordered.push(ALL_DAYS[idxs[(bestStart + k) % idxs.length]]);
+  }
+  return ordered;
+}
+
+function updateTzInfo() {
+  if (!state.tzEnabled) {
+    tzInfoEl.textContent = '';
+    dayToggleHintEl.classList.add('hidden');
+    dayToggleHintEl.textContent = '';
+    return;
+  }
+  const shift = getTimeZoneShift();
+  if (shift === 0) {
+    tzInfoEl.textContent = state.schoolTz === state.homeTz
+      ? 'Pick a home time zone different from your school to shift the wallpaper into your local time.'
+      : '';
+    dayToggleHintEl.classList.add('hidden');
+    dayToggleHintEl.textContent = '';
+    return;
+  }
+  tzInfoEl.textContent = `Wallpaper shows your home time (${describeShift(shift)} from school). `
+    + 'Classes that cross midnight move to the neighbouring weekday. '
+    + "Based on today's date; daylight-saving changes during the term aren't applied.";
+  dayToggleHintEl.textContent = 'While a home time zone is set, shown days follow where your classes land after the shift.';
+  dayToggleHintEl.classList.remove('hidden');
+}
+
+function getAxisRange(courses) {
   let minStart = 9 * 60;
   let maxEnd = 18 * 60;
-  state.courses.forEach((c) => {
+  courses.forEach((c) => {
     if (!c.start || !c.end) return;
     const s = parseTime(c.start);
     const e = parseTime(c.end);
@@ -888,6 +1167,7 @@ function getAxisRange() {
 
 function drawCanvas() {
   const theme = getActiveTheme();
+  const model = getRenderModel();
   const { w, h } = getResolution();
   canvas.width = w;
   canvas.height = h;
@@ -898,7 +1178,7 @@ function drawCanvas() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  const days = state.days;
+  const days = model.days;
   const sideMargin = w * 0.06;
   const topMargin = state.lockMargin ? h * 0.34 : h * 0.12;
   const bottomMargin = h * 0.08;
@@ -951,7 +1231,7 @@ function drawCanvas() {
   ctx.lineWidth = Math.max(1, w * 0.0015);
   ctx.stroke();
 
-  const { axisStart, axisEnd } = getAxisRange();
+  const { axisStart, axisEnd } = getAxisRange(model.courses);
   const totalMinutes = axisEnd - axisStart;
   const hourCount = totalMinutes / 60;
   const hourStep = hourCount > 11 ? 2 : 1;
@@ -970,12 +1250,24 @@ function drawCanvas() {
       const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
       const hourStr = String(hour12);
       const labelMaxWidth = timeColW * 0.62;
-      const labelSize = fitFontSize(ctx, hourStr, labelMaxWidth, Math.min(gridHeight * 0.02, timeColW * 0.4), 10, '600');
-      ctx.font = `600 ${labelSize}px 'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif`;
+      const labelCap = Math.min(gridHeight * 0.02, timeColW * 0.4);
+      const labelSize = fitFontSize(ctx, hourStr, labelMaxWidth, state.tzEnabled ? labelCap * 0.9 : labelCap, 10, '600');
+      const fontStack = "'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif";
+      const labelX = cardX + timeColW / 2;
       ctx.fillStyle = theme.muted;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(hourStr, cardX + timeColW / 2, y);
+      if (state.tzEnabled) {
+        const meridiem = hour24 % 24 < 12 ? 'AM' : 'PM';
+        const merSize = Math.max(7, labelSize * 0.58);
+        ctx.font = `600 ${labelSize}px ${fontStack}`;
+        ctx.fillText(hourStr, labelX, y - merSize * 0.5);
+        ctx.font = `600 ${merSize}px ${fontStack}`;
+        ctx.fillText(meridiem, labelX, y + labelSize * 0.5);
+      } else {
+        ctx.font = `600 ${labelSize}px ${fontStack}`;
+        ctx.fillText(hourStr, labelX, y);
+      }
     }
   }
 
@@ -991,7 +1283,7 @@ function drawCanvas() {
 
   const blockPad = dayColW * 0.06;
   const vPad = Math.max(3, gridHeight * 0.004);
-  const validCourses = state.courses.filter((c) => c.name && c.start && c.end && days.includes(c.day));
+  const validCourses = model.courses.filter((c) => c.name && c.start && c.end && days.includes(c.day));
 
   validCourses.forEach((course) => {
     const dayIndex = days.indexOf(course.day);
